@@ -1,33 +1,25 @@
 package hr.algebra.rdojauf.lposavec.reqify.controller;
 
-import hr.algebra.rdojauf.lposavec.reqify.model.Application;
-import hr.algebra.rdojauf.lposavec.reqify.model.Candidate;
-import hr.algebra.rdojauf.lposavec.reqify.service.CandidateService;
-import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
+import hr.algebra.rdojauf.lposavec.reqify.dto.ApiResourceDto;
+import hr.algebra.rdojauf.lposavec.reqify.repository.ApplicationRepository;
+import hr.algebra.rdojauf.lposavec.reqify.service.ApiResourceService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.time.Instant;
-import java.util.*;
+import java.util.List;
 
 @RestController
 @RequestMapping("/dashboard")
-@AllArgsConstructor
 public class DashboardController {
-
-    private CandidateService candidateService;
-
-    @GetMapping
-    public List<Application> getApplications(Model model) {
-        return Collections.emptyList();
+    private final ApplicationRepository applicationRepository;
+    private final ApiResourceService resourceService;
+    public DashboardController(ApplicationRepository applicationRepository, ApiResourceService resourceService) {
+        this.applicationRepository = applicationRepository;
+        this.resourceService = resourceService;
     }
-
-    @GetMapping("/cans")
-    public List<Candidate> getCandidates() {
-        return candidateService.getAll();
+    @GetMapping
+    public List<ApiResourceDto> getDashboard(@RequestParam(required = false) String include) {
+        return resourceService.list(applicationRepository, "Dashboard");
     }
 }

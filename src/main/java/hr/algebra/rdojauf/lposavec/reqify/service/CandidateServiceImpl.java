@@ -1,66 +1,82 @@
 package hr.algebra.rdojauf.lposavec.reqify.service;
 
+import hr.algebra.rdojauf.lposavec.reqify.dto.CandidateDto;
+import hr.algebra.rdojauf.lposavec.reqify.mapper.CandidateMapper;
 import hr.algebra.rdojauf.lposavec.reqify.model.Candidate;
-import hr.algebra.rdojauf.lposavec.reqify.model.CandidateSkill;
-import hr.algebra.rdojauf.lposavec.reqify.model.EducationEntry;
-import hr.algebra.rdojauf.lposavec.reqify.model.WorkExperienceEntry;
-import lombok.AllArgsConstructor;
+import hr.algebra.rdojauf.lposavec.reqify.repository.CandidateRepository;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.time.LocalDate;
-import java.util.*;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
-@AllArgsConstructor
+@Transactional
 public class CandidateServiceImpl implements CandidateService {
+
+    private final CandidateRepository candidateRepository;
+    private final CandidateMapper candidateMapper;
+
+    public CandidateServiceImpl(CandidateRepository candidateRepository, CandidateMapper candidateMapper) {
+        this.candidateRepository = candidateRepository;
+        this.candidateMapper = candidateMapper;
+    }
+
     @Override
-    public List<Candidate> getAll() {
-        // This is a temp method for testing:
-        CandidateSkill java = CandidateSkill.builder().name("Java").experienceMonths(9).build();
-        CandidateSkill cs = CandidateSkill.builder().name("C#").experienceMonths(9).build();
+    @Transactional(readOnly = true)
+    public List<CandidateDto> getAll() {
+        return candidateRepository.findAll().stream()
+                .map(candidateMapper::toDto)
+                .collect(Collectors.toList());
+    }
 
-        Set<CandidateSkill> skills = new HashSet<>();
-        skills.add(java);
-        skills.add(cs);
+    @Override
+    @Transactional(readOnly = true)
+    public CandidateDto getById(Integer id) {
+        Candidate candidate = candidateRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Candidate not found: " + id));
+        return candidateMapper.toDto(candidate);
+    }
 
-        EducationEntry educationEntry = EducationEntry.builder()
-                .fieldOfStudy("CS")
-                .graduationYear(3)
-                .institution("Uni")
-                .qualification("Qual").build();
+    @Override
+    public CandidateDto save(CandidateDto candidateDto) {
+        if (candidateDto == null) {
+            throw new IllegalArgumentException("Candidate data is required");
+        }
+        Candidate candidate = candidateMapper.toEntity(candidateDto);
+        Instant now = Instant.now();
+        if (candidate.getCreatedAt() == null) {
+            candidate.setCreatedAt(now);
+        }
+        candidate.setUpdatedAt(now);
+        return candidateMapper.toDto(candidateRepository.save(candidate));
+    }
 
-        List<EducationEntry> educationEntries = new ArrayList<>();
-        educationEntries.add(educationEntry);
+    @Override
+    public CandidateDto update(CandidateDto candidateDto) {
+        if (candidateDto == null) {
+            throw new IllegalArgumentException("Candidate data is required");
+        }
+        Candidate candidate = candidateMapper.toEntity(candidateDto);
+        if (candidate.getId() == null) {
+            throw new IllegalArgumentException("Candidate id is required for update");
+        }
 
-        WorkExperienceEntry workExperienceEntry = WorkExperienceEntry.builder()
-                .description("desc")
-                .employer("John")
-                .endedOn(LocalDate.now().minusMonths(5))
-                .identifyingDetailsSanitized(true)
-                .jobTitle("Job")
-                .startedOn(LocalDate.now().minusMonths(10))
-                .build();
-        List<WorkExperienceEntry> workExperienceEntries = new ArrayList<>();
-        workExperienceEntries.add(workExperienceEntry);
+        Candidate existing = candidateRepository.findById(candidate.getId())
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Candidate not found: " + candidate.getId()));
+        candidate.setCreatedAt(existing.getCreatedAt());
+        candidate.setUpdatedAt(Instant.now());
+        return candidateMapper.toDto(candidateRepository.save(candidate));
+    }
 
-        Candidate candidate = Candidate.builder()
-                .id(1)
-                .anonymousReference("anon")
-                .professionalSummary("summary")
-                .totalExperienceMonths(18)
-                .skills(skills)
-                .education(educationEntries)
-                .workExperience(workExperienceEntries)
-                .certifications(Collections.emptySet())
-                .createdAt(Instant.now())
-                .updatedAt(Instant.now())
-                .version(1L)
-                .build();
-
-        List<Candidate> candidates = new ArrayList<>();
-        candidates.add(candidate);
-
-        return candidates;
+    @Override
+    public void deleteById(Integer id) {
+        if (!candidateRepository.existsById(id)) {
+            throw new EntityNotFoundException("Candidate not found: " + id);
+        }
+        candidateRepository.deleteById(id);
     }
 }
